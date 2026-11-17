@@ -1,0 +1,111 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Authenticated researcher profile and UI/audio preferences isolated by user UID.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "email": { "type": "string", "maxLength": 255 },
+        "displayName": { "type": "string", "minLength": 1, "maxLength": 150 },
+        "photoURL": { "type": "string", "maxLength": 1000 },
+        "themePreference": { "type": "string", "enum": ["dark", "light"] },
+        "audioEnabled": { "type": "boolean" },
+        "audioVolume": { "type": "number" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "updatedAt": { "type": "string", "format": "date-time" }
+      },
+      "required": ["uid", "email", "displayName", "themePreference", "audioEnabled", "audioVolume", "createdAt", "updatedAt"]
+    },
+    "SimulationRecord": {
+      "title": "SimulationRecord",
+      "description": "Saved RK4 projectile simulation parameters, summary metrics, and comparison metadata owned by a single user.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "simulationName": { "type": "string", "minLength": 1, "maxLength": 200 },
+        "projectileType": { "type": "string", "enum": ["rocket", "airplane", "ball", "custom"] },
+        "physicsModel": { "type": "string", "enum": ["ideal", "quadratic_drag", "powered_rocket", "aircraft_flight"] },
+        "sourceEnvironment": { "type": "string", "maxLength": 64 },
+        "destinationEnvironment": { "type": "string", "maxLength": 64 },
+        "environmentTime": { "type": "string", "enum": ["day", "evening"] },
+        "environmentWeather": { "type": "string", "enum": ["clear", "overcast", "windy"] },
+        "initialVelocity": { "type": "number" },
+        "launchAngleDeg": { "type": "number" },
+        "gravity": { "type": "number" },
+        "timeStep": { "type": "number" },
+        "initialHeight": { "type": "number" },
+        "mass": { "type": "number" },
+        "airDensity": { "type": "number" },
+        "dragCoefficient": { "type": "number" },
+        "crossSectionalArea": { "type": "number" },
+        "thrust": { "type": "number" },
+        "burnTime": { "type": "number" },
+        "dryMass": { "type": "number" },
+        "liftCoefficient": { "type": "number" },
+        "wingArea": { "type": "number" },
+        "destinationDistance": { "type": "number" },
+        "destinationHeight": { "type": "number" },
+        "destinationTolerance": { "type": "number" },
+        "maximumHeight": { "type": "number" },
+        "flightTime": { "type": "number" },
+        "horizontalRange": { "type": "number" },
+        "finalVelocity": { "type": "number" },
+        "maxSpeed": { "type": "number" },
+        "stepCount": { "type": "number" },
+        "destinationReached": { "type": "boolean" },
+        "analyticalSummary": { "type": "object" },
+        "errorsSummary": { "type": "object" },
+        "createdAt": { "type": "string", "format": "date-time" }
+      },
+      "required": [
+        "uid",
+        "simulationName",
+        "projectileType",
+        "physicsModel",
+        "sourceEnvironment",
+        "destinationEnvironment",
+        "initialVelocity",
+        "launchAngleDeg",
+        "gravity",
+        "timeStep",
+        "mass",
+        "dragCoefficient",
+        "airDensity",
+        "crossSectionalArea",
+        "maximumHeight",
+        "flightTime",
+        "horizontalRange",
+        "finalVelocity",
+        "maxSpeed",
+        "stepCount",
+        "createdAt"
+      ]
+    },
+    "SimulationStepBatch": {
+      "title": "SimulationStepBatch",
+      "description": "Chunked numerical RK4 iteration records (x, y, vx, vy, k1..k4) belonging to a SimulationRecord.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string", "minLength": 1, "maxLength": 128, "pattern": "^[a-zA-Z0-9_\\-]+$" },
+        "batchIndex": { "type": "number" },
+        "steps": { "type": "array" }
+      },
+      "required": ["uid", "batchIndex", "steps"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": { "$ref": "#/entities/UserProfile" },
+      "description": "Private user profile and preferences document accessible exclusively by the owning authenticated user."
+    },
+    "/users/{userId}/simulations/{simId}": {
+      "schema": { "$ref": "#/entities/SimulationRecord" },
+      "description": "User-owned simulation configurations and calculated summary results."
+    },
+    "/users/{userId}/simulations/{simId}/stepBatches/{batchId}": {
+      "schema": { "$ref": "#/entities/SimulationStepBatch" },
+      "description": "Chunked numerical RK4 step table rows storing k1..k4 derivatives and state vectors."
+    }
+  }
+}

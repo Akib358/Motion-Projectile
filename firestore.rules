@@ -1,0 +1,216 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // Global default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() >= 1 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isVerifiedOwner(userId) {
+      return isSignedIn()
+        && request.auth.token.email_verified == true
+        && request.auth.uid == userId;
+    }
+
+    function isValidUserProfile(data) {
+      return data.keys().hasAll([
+          'uid', 'email', 'displayName', 'themePreference', 'audioEnabled', 'audioVolume', 'createdAt', 'updatedAt'
+        ])
+        && data.keys().hasOnly([
+          'uid', 'email', 'displayName', 'photoURL', 'themePreference', 'audioEnabled', 'audioVolume', 'createdAt', 'updatedAt'
+        ])
+        && data.uid is string && data.uid == request.auth.uid && isValidId(data.uid)
+        && data.email is string && data.email.size() <= 255
+        && data.displayName is string && data.displayName.size() >= 1 && data.displayName.size() <= 150
+        && (!('photoURL' in data) || data.photoURL == null || (data.photoURL is string && data.photoURL.size() <= 1000))
+        && data.themePreference is string && data.themePreference in ['dark', 'light']
+        && data.audioEnabled is bool
+        && data.audioVolume is number && data.audioVolume >= 0 && data.audioVolume <= 1
+        && data.createdAt is timestamp
+        && data.updatedAt is timestamp;
+    }
+
+    function isValidSimulationRecord(data) {
+      return data.keys().hasAll([
+          'uid',
+          'simulationName',
+          'projectileType',
+          'physicsModel',
+          'sourceEnvironment',
+          'destinationEnvironment',
+          'environmentTime',
+          'environmentWeather',
+          'initialVelocity',
+          'launchAngleDeg',
+          'gravity',
+          'timeStep',
+          'mass',
+          'dragCoefficient',
+          'airDensity',
+          'crossSectionalArea',
+          'maximumHeight',
+          'flightTime',
+          'horizontalRange',
+          'finalVelocity',
+          'maxSpeed',
+          'stepCount',
+          'createdAt'
+        ])
+        && data.keys().hasOnly([
+          'uid',
+          'simulationName',
+          'projectileType',
+          'physicsModel',
+          'sourceEnvironment',
+          'destinationEnvironment',
+          'environmentTime',
+          'environmentWeather',
+          'initialVelocity',
+          'launchAngleDeg',
+          'gravity',
+          'timeStep',
+          'initialHeight',
+          'mass',
+          'dragCoefficient',
+          'airDensity',
+          'crossSectionalArea',
+          'thrust',
+          'burnTime',
+          'dryMass',
+          'liftCoefficient',
+          'wingArea',
+          'destinationDistance',
+          'destinationHeight',
+          'destinationTolerance',
+          'maximumHeight',
+          'flightTime',
+          'horizontalRange',
+          'finalVelocity',
+          'maxSpeed',
+          'stepCount',
+          'destinationReached',
+          'destinationDelta',
+          'yAtDestination',
+          'analyticalSummary',
+          'errorsSummary',
+          'createdAt'
+        ])
+        && data.uid is string && data.uid == request.auth.uid && isValidId(data.uid)
+        && data.simulationName is string && data.simulationName.size() >= 1 && data.simulationName.size() <= 200
+        && data.projectileType is string && data.projectileType in ['rocket', 'airplane', 'ball', 'custom']
+        && data.physicsModel is string && data.physicsModel in ['ideal', 'quadratic_drag', 'powered_rocket', 'aircraft_flight']
+        && data.sourceEnvironment is string && data.sourceEnvironment.size() >= 1 && data.sourceEnvironment.size() <= 64
+        && data.destinationEnvironment is string && data.destinationEnvironment.size() >= 1 && data.destinationEnvironment.size() <= 64
+        && data.environmentTime is string && data.environmentTime in ['day', 'evening']
+        && data.environmentWeather is string && data.environmentWeather in ['clear', 'overcast', 'windy']
+        && data.initialVelocity is number && data.initialVelocity > 0 && data.initialVelocity <= 5000
+        && data.launchAngleDeg is number && data.launchAngleDeg > 0 && data.launchAngleDeg < 90
+        && data.gravity is number && data.gravity > 0 && data.gravity <= 100
+        && data.timeStep is number && data.timeStep > 0 && data.timeStep <= 2
+        && (!('initialHeight' in data) || (data.initialHeight is number && data.initialHeight >= 0 && data.initialHeight <= 10000))
+        && data.mass is number && data.mass > 0 && data.mass <= 100000
+        && data.dragCoefficient is number && data.dragCoefficient >= 0 && data.dragCoefficient <= 10
+        && data.airDensity is number && data.airDensity >= 0 && data.airDensity <= 25
+        && data.crossSectionalArea is number && data.crossSectionalArea >= 0 && data.crossSectionalArea <= 200
+        && (!('thrust' in data) || (data.thrust is number && data.thrust >= 0))
+        && (!('burnTime' in data) || (data.burnTime is number && data.burnTime >= 0))
+        && (!('dryMass' in data) || (data.dryMass is number && data.dryMass > 0))
+        && (!('liftCoefficient' in data) || (data.liftCoefficient is number && data.liftCoefficient >= 0))
+        && (!('wingArea' in data) || (data.wingArea is number && data.wingArea >= 0))
+        && (!('destinationDistance' in data) || data.destinationDistance == null || (data.destinationDistance is number && data.destinationDistance > 0))
+        && (!('destinationHeight' in data) || (data.destinationHeight is number && data.destinationHeight >= 0))
+        && (!('destinationTolerance' in data) || (data.destinationTolerance is number && data.destinationTolerance > 0))
+        && data.maximumHeight is number
+        && data.flightTime is number && data.flightTime >= 0
+        && data.horizontalRange is number && data.horizontalRange >= 0
+        && data.finalVelocity is number && data.finalVelocity >= 0
+        && data.maxSpeed is number && data.maxSpeed >= 0
+        && data.stepCount is number && data.stepCount >= 1
+        && (!('destinationReached' in data) || data.destinationReached == null || data.destinationReached is bool)
+        && (!('destinationDelta' in data) || data.destinationDelta == null || data.destinationDelta is number)
+        && (!('yAtDestination' in data) || data.yAtDestination == null || data.yAtDestination is number)
+        && (!('analyticalSummary' in data) || data.analyticalSummary == null || data.analyticalSummary is map)
+        && (!('errorsSummary' in data) || data.errorsSummary == null || data.errorsSummary is map)
+        && data.createdAt is timestamp;
+    }
+
+    function isValidStepBatch(data) {
+      return data.keys().hasAll(['uid', 'batchIndex', 'steps'])
+        && data.keys().hasOnly(['uid', 'batchIndex', 'steps'])
+        && data.uid is string && data.uid == request.auth.uid && isValidId(data.uid)
+        && data.batchIndex is number && data.batchIndex >= 0 && data.batchIndex <= 100
+        && data.steps is list
+        && data.steps.size() > 0
+        && data.steps.size() <= 500
+        && data.steps[0] is map;
+    }
+
+    match /users/{userId} {
+      allow get: if isValidId(userId) && isVerifiedOwner(userId);
+      allow list: if false;
+      allow create: if isValidId(userId)
+        && isVerifiedOwner(userId)
+        && isValidUserProfile(incoming())
+        && incoming().createdAt == request.time
+        && incoming().updatedAt == request.time;
+      allow update: if isValidId(userId)
+        && isVerifiedOwner(userId)
+        && isValidUserProfile(incoming())
+        && incoming().uid == existing().uid
+        && incoming().createdAt == existing().createdAt
+        && incoming().updatedAt == request.time
+        && incoming().diff(existing()).affectedKeys().hasOnly([
+          'displayName', 'photoURL', 'themePreference', 'audioEnabled', 'audioVolume', 'updatedAt'
+        ]);
+      allow delete: if false;
+
+      match /simulations/{simId} {
+        allow get: if isValidId(userId) && isValidId(simId) && isVerifiedOwner(userId);
+        allow list: if isVerifiedOwner(userId) && resource.data.uid == request.auth.uid;
+        allow create: if isValidId(userId)
+          && isValidId(simId)
+          && isVerifiedOwner(userId)
+          && isValidSimulationRecord(incoming())
+          && incoming().createdAt == request.time;
+        allow update: if isValidId(userId)
+          && isValidId(simId)
+          && isVerifiedOwner(userId)
+          && isValidSimulationRecord(incoming())
+          && incoming().uid == existing().uid
+          && incoming().createdAt == existing().createdAt
+          && incoming().diff(existing()).affectedKeys().hasOnly(['simulationName']);
+        allow delete: if isValidId(userId) && isValidId(simId) && isVerifiedOwner(userId);
+
+        match /stepBatches/{batchId} {
+          allow get: if isValidId(userId) && isValidId(simId) && isValidId(batchId)
+            && isVerifiedOwner(userId)
+            && exists(/databases/$(database)/documents/users/$(userId)/simulations/$(simId));
+          allow list: if isVerifiedOwner(userId) && resource.data.uid == request.auth.uid;
+          allow create: if isValidId(userId) && isValidId(simId) && isValidId(batchId)
+            && isVerifiedOwner(userId)
+            && isValidStepBatch(incoming())
+            && exists(/databases/$(database)/documents/users/$(userId)/simulations/$(simId));
+          allow update: if false;
+          allow delete: if isValidId(userId) && isValidId(simId) && isValidId(batchId)
+            && isVerifiedOwner(userId);
+        }
+      }
+    }
+  }
+}

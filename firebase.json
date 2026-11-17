@@ -1,0 +1,8 @@
+{
+  "firestore": {
+    "databaseId": "ai-studio-haldenform-3f361c02-0a66-4490-858d-eaced941c058",
+    "rules": "firestore.rules",
+    "edition": "ENTERPRISE",
+    "dataAccessMode": "FIRESTORE_NATIVE"
+  }
+}

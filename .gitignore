@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+/.pnp
+.pnp.js
+
+# Production & Build outputs
+dist/
+build/
+coverage/
+*.tsbuildinfo
+
+# Environment variables & secrets
+.env*
+!.env.example
+!.env.docker.example
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+env/
+venv/
+ENV/
+.venv/
+.pytest_cache/
+*.egg-info/
+
+# Databases & local sqlite files
+*.db
+*.db-shm
+*.db-wal
+*.db-journal
+*.sqlite
+*.sqlite3
+data/*.db*
+!data/.gitkeep
+
+# Logs and OS files
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.DS_Store
+Thumbs.db
+
+# IDE & AI Assistant internal artifacts
+.agents/
+.aistudio/
+.antigravity/
+.vscode/
