@@ -85,46 +85,63 @@ export async function saveSimulationToDatabase(
   config: SimulationConfig,
   output: SimulationOutput,
 ): Promise<string> {
-  const response = await fetch('/api/simulations', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      Authorization: `Bearer ${idToken}`,
-    },
-    body: JSON.stringify({ config, output }),
-  });
+  let savedId: string | null = null;
 
-  if (!response.ok) {
-    const errBody = await response.json().catch(() => ({ error: 'Failed to save simulation to SQLite.' }));
-    throw new Error(errBody.error || `HTTP ${response.status}`);
+  try {
+    const response = await fetch('/api/simulations', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${idToken}`,
+      },
+      body: JSON.stringify({ config, output }),
+    });
+
+    if (response.ok) {
+      const data = await response.json();
+      savedId = String(data.id);
+    }
+  } catch {
+    // Backend API unreachable (e.g. static hosting)
   }
-  const data = await response.json();
-  const sqliteId = String(data.id);
+
+  const effectiveId =
+    savedId || `sim_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
 
   if (auth.currentUser) {
-    await saveSimulationToFirestore(auth.currentUser.uid, sqliteId, config, output);
+    await saveSimulationToFirestore(auth.currentUser.uid, effectiveId, config, output);
   }
 
-  return sqliteId;
+  return effectiveId;
 }
 
 export async function listUserSimulations(idToken: string): Promise<SavedSimulationRecord[]> {
-  const response = await fetch('/api/simulations', {
-    headers: {
-      Authorization: `Bearer ${idToken}`,
-    },
-  });
-  if (!response.ok) {
-    const errBody = await response.json().catch(() => ({ error: 'Failed to load simulation history.' }));
-    throw new Error(errBody.error || `HTTP ${response.status}`);
+  let sqliteItems: SavedSimulationRecord[] = [];
+
+  try {
+    const response = await fetch('/api/simulations', {
+      headers: {
+        Authorization: `Bearer ${idToken}`,
+      },
+    });
+    if (response.ok) {
+      sqliteItems = await response.json();
+    }
+  } catch {
+    // Backend API unreachable (e.g. static hosting)
   }
-  const sqliteItems: SavedSimulationRecord[] = await response.json();
 
   if (!auth.currentUser) {
     return sqliteItems;
   }
 
-  const firestoreItems = await listSimulationsFromFirestore(auth.currentUser.uid);
+  let firestoreItems: SavedSimulationRecord[] = [];
+  try {
+    firestoreItems = await listSimulationsFromFirestore(auth.currentUser.uid);
+  } catch (err) {
+    console.warn('Firestore listing fallback:', err);
+  }
+
   const byId = new Map<string, SavedSimulationRecord>();
   for (const item of firestoreItems) {
     byId.set(item.id, item);

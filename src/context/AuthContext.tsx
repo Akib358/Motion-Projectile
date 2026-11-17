@@ -63,49 +63,84 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [audioEnabled, audioVolume]);
 
   const syncUserProfile = useCallback(async (user: FirebaseUser) => {
-    const token = await user.getIdToken();
-    const res = await fetch('/api/users/sync', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        Authorization: `Bearer ${token}`,
-      },
-      body: JSON.stringify({
-        email: user.email || '',
-        displayName: user.displayName || user.email?.split('@')[0] || 'Researcher',
-        photoURL: user.photoURL || null,
-      }),
-    });
+    let prefTheme: 'light' | 'dark' = 'dark';
+    let prefAudio = true;
+    let prefVol = 0.45;
+    let displayName = user.displayName || user.email?.split('@')[0] || 'Researcher';
+    let photoURL = user.photoURL || null;
+    let createdAt = user.metadata?.creationTime || new Date().toISOString();
 
-    if (!res.ok) {
-      const err = await res.json().catch(() => ({ error: 'SQLite profile sync failed.' }));
-      throw new Error(err.error || 'Unable to synchronize user profile.');
+    // 1. Try sync with SQLite backend if reachable
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/users/sync', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          email: user.email || '',
+          displayName,
+          photoURL,
+        }),
+      });
+
+      if (res.ok) {
+        const row = await res.json();
+        if (row.theme_preference === 'light' || row.theme_preference === 'dark') {
+          prefTheme = row.theme_preference;
+        }
+        if (typeof row.audio_enabled === 'boolean') {
+          prefAudio = row.audio_enabled;
+        }
+        if (typeof row.audio_volume === 'number') {
+          prefVol = row.audio_volume;
+        }
+        if (row.display_name) {
+          displayName = String(row.display_name);
+        }
+        if (row.profile_image) {
+          photoURL = String(row.profile_image);
+        }
+        if (row.created_at) {
+          createdAt = String(row.created_at);
+        }
+      }
+    } catch {
+      // Backend not running (e.g. GitHub Pages static deploy) - continue
     }
 
-    const row = await res.json();
-    const prefTheme: 'light' | 'dark' = row.theme_preference === 'dark' ? 'dark' : 'light';
-    const prefAudio = Boolean(row.audio_enabled ?? true);
-    const prefVol = typeof row.audio_volume === 'number' ? row.audio_volume : 0.45;
-    const displayName = String(row.display_name ?? user.displayName ?? 'Researcher');
-    const photoURL = (row.profile_image as string | undefined) ?? user.photoURL;
+    // 2. Sync to Firestore (always runs directly in browser)
+    try {
+      const firestoreData = await syncUserProfileToFirestore(user, {
+        displayName,
+        photoURL,
+        themePreference: prefTheme,
+        audioEnabled: prefAudio,
+        audioVolume: prefVol,
+      });
+      if (firestoreData) {
+        if (firestoreData.displayName) displayName = firestoreData.displayName;
+        if (firestoreData.themePreference) prefTheme = firestoreData.themePreference;
+        if (typeof firestoreData.audioEnabled === 'boolean') prefAudio = firestoreData.audioEnabled;
+        if (typeof firestoreData.audioVolume === 'number') prefVol = firestoreData.audioVolume;
+        if (firestoreData.createdAt) createdAt = firestoreData.createdAt;
+      }
+    } catch (err) {
+      console.warn('Firestore profile sync fallback:', err);
+    }
 
-    await syncUserProfileToFirestore(user, {
-      displayName,
-      photoURL,
-      themePreference: prefTheme,
-      audioEnabled: prefAudio,
-      audioVolume: prefVol,
-    });
-
+    // 3. Always set profile so ProfileView and AppShell have full user data
     setProfile({
       uid: user.uid,
-      email: String(row.email ?? user.email ?? ''),
+      email: user.email || '',
       displayName,
       photoURL,
       themePreference: prefTheme,
       audioEnabled: prefAudio,
       audioVolume: prefVol,
-      createdAt: String(row.created_at ?? new Date().toISOString()),
+      createdAt,
     });
     setTheme(prefTheme);
     setAudioEnabled(prefAudio);
@@ -178,33 +213,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       displayName?: string;
       photoURL?: string | null;
     }) => {
-      if (!firebaseUser || !profile) return;
+      if (!firebaseUser) return;
+      const currentName = profile?.displayName || firebaseUser.displayName || 'Researcher';
+      const currentPhoto = profile?.photoURL ?? firebaseUser.photoURL;
+
       const nextTheme = prefs.themePreference ?? theme;
       const nextAudio = prefs.audioEnabled ?? audioEnabled;
       const nextVol = prefs.audioVolume ?? audioVolume;
-      const nextName =
-        (prefs.displayName ?? profile.displayName).trim().slice(0, 150) || profile.displayName;
-      const nextPhoto = prefs.photoURL !== undefined ? prefs.photoURL : profile.photoURL;
+      const nextName = (prefs.displayName ?? currentName).trim().slice(0, 150) || currentName;
+      const nextPhoto = prefs.photoURL !== undefined ? prefs.photoURL : currentPhoto;
 
       setTheme(nextTheme);
       setAudioEnabled(nextAudio);
       setAudioVolume(nextVol);
-      setProfile((prev) =>
-        prev
-          ? {
-              ...prev,
-              displayName: nextName,
-              photoURL: nextPhoto ?? null,
-              themePreference: nextTheme,
-              audioEnabled: nextAudio,
-              audioVolume: nextVol,
-            }
-          : null,
-      );
+      setProfile((prev) => ({
+        uid: firebaseUser.uid,
+        email: firebaseUser.email || '',
+        displayName: nextName,
+        photoURL: nextPhoto ?? null,
+        themePreference: nextTheme,
+        audioEnabled: nextAudio,
+        audioVolume: nextVol,
+        createdAt: prev?.createdAt || firebaseUser.metadata?.creationTime || new Date().toISOString(),
+      }));
 
-      const token = await firebaseUser.getIdToken();
-      await Promise.all([
-        fetch('/api/users/preferences', {
+      // Update in Firestore
+      try {
+        await updateUserPreferencesInFirestore(firebaseUser, {
+          displayName: nextName,
+          photoURL: nextPhoto ?? null,
+          themePreference: nextTheme,
+          audioEnabled: nextAudio,
+          audioVolume: Math.max(0, Math.min(1, nextVol)),
+        });
+      } catch (err) {
+        console.warn('Firestore preference update warning:', err);
+      }
+
+      // Optionally update backend if running
+      try {
+        const token = await firebaseUser.getIdToken();
+        await fetch('/api/users/preferences', {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -217,15 +266,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             audioEnabled: nextAudio,
             audioVolume: Math.max(0, Math.min(1, nextVol)),
           }),
-        }),
-        updateUserPreferencesInFirestore(firebaseUser, {
-          displayName: nextName,
-          photoURL: nextPhoto ?? null,
-          themePreference: nextTheme,
-          audioEnabled: nextAudio,
-          audioVolume: Math.max(0, Math.min(1, nextVol)),
-        }),
-      ]);
+        });
+      } catch {
+        // Backend not running on static hosts
+      }
     },
     [firebaseUser, profile, theme, audioEnabled, audioVolume],
   );

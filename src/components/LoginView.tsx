@@ -2,6 +2,7 @@ import { motion } from 'motion/react';
 import { AlertCircle, Compass, LineChart, ShieldCheck } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { MathFormula } from './MathFormula';
+import { AppLogo } from './AppLogo';
 
 export function LoginView() {
   const { signInWithGoogle, authBusy, authError, clearAuthError } = useAuth();
@@ -47,11 +48,7 @@ export function LoginView() {
       <header className="relative z-10 max-w-6xl w-full mx-auto px-5 sm:px-6 py-5 flex items-center justify-between">
         <div className="flex items-center gap-2.5">
           <div className="w-9 h-9 rounded-xl bg-white border border-sky-400/40 flex items-center justify-center shadow-sm overflow-hidden p-0.5">
-            <img
-              src="/assets/aistudio/images_7db888d9.jpg"
-              alt="PROJECTILE LAB logo"
-              className="w-full h-full object-contain"
-            />
+            <AppLogo className="w-full h-full" size={32} />
           </div>
           <span className="font-display text-lg font-bold tracking-tight text-white whitespace-nowrap">
             PROJECTILE LAB

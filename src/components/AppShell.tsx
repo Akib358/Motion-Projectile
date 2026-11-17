@@ -19,6 +19,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { AppPage } from '../types/simulation';
+import { AppLogo } from './AppLogo';
 
 interface AppShellProps {
   activePage: AppPage;
@@ -59,11 +60,7 @@ export function AppShell({ activePage, onNavigate, children }: AppShellProps) {
             transition={{ duration: 0.3 }}
             className="w-8 h-8 rounded-lg bg-white border border-sky-400/40 flex items-center justify-center shrink-0 shadow-xs overflow-hidden p-0.5"
           >
-            <img
-              src="/assets/aistudio/images_7db888d9.jpg"
-              alt="PROJECTILE LAB logo"
-              className="w-full h-full object-contain"
-            />
+            <AppLogo className="w-full h-full" size={28} />
           </motion.div>
           <span className="font-display font-bold tracking-tight text-sm text-slate-900 dark:text-white whitespace-nowrap">
             PROJECTILE LAB

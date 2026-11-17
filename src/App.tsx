@@ -7,6 +7,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { AnimatePresence, motion } from 'motion/react';
 import { Loader2 } from 'lucide-react';
 import { AppShell } from './components/AppShell';
+import { AppLogo } from './components/AppLogo';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { LoginView } from './components/LoginView';
 import { AuthProvider, useAuth } from './context/AuthContext';
@@ -317,11 +318,9 @@ function ProjectileLabApp() {
     return (
       <div className="min-h-screen lab-grid-surface text-slate-900 dark:text-slate-100 flex flex-col items-center justify-center gap-4">
         <div className="flex items-center gap-3">
-          <img
-            src="/assets/aistudio/images_7db888d9.jpg"
-            alt="PROJECTILE LAB logo"
-            className="w-8 h-8 rounded-lg bg-white p-0.5 object-contain border border-sky-400/40"
-          />
+          <div className="w-8 h-8 rounded-lg bg-white p-0.5 object-contain border border-sky-400/40 flex items-center justify-center overflow-hidden">
+            <AppLogo className="w-full h-full" size={28} />
+          </div>
           <span className="font-display text-lg font-bold tracking-tight">PROJECTILE LAB</span>
         </div>
         <div className="flex items-center gap-2 text-xs font-medium text-sky-700 dark:text-sky-300">

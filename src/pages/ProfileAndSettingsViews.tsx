@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 import { Check, LogOut, RotateCcw, Volume2 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
@@ -37,9 +37,19 @@ const SCIENTIFIC_AVATARS: { id: string; label: string; url: string }[] = [
 
 export function ProfileView({ simulationCount }: { simulationCount: number }) {
   const { firebaseUser, profile, logout, updatePreferences } = useAuth();
-  const [nameInput, setNameInput] = useState(profile?.displayName || '');
+  const [nameInput, setNameInput] = useState(
+    profile?.displayName || firebaseUser?.displayName || '',
+  );
   const [savedNotice, setSavedNotice] = useState(false);
   const [photoSavedNotice, setPhotoSavedNotice] = useState(false);
+
+  useEffect(() => {
+    if (profile?.displayName) {
+      setNameInput(profile.displayName);
+    } else if (firebaseUser?.displayName) {
+      setNameInput(firebaseUser.displayName);
+    }
+  }, [profile?.displayName, firebaseUser?.displayName]);
 
   const handleSaveName = async () => {
     if (!nameInput.trim()) return;
@@ -83,9 +93,11 @@ export function ProfileView({ simulationCount }: { simulationCount: number }) {
 
             <div className="min-w-0">
               <h2 className="font-display text-xl font-bold text-slate-900 dark:text-white truncate">
-                {profile?.displayName}
+                {profile?.displayName || firebaseUser?.displayName || 'Researcher'}
               </h2>
-              <p className="text-sm text-slate-500 dark:text-slate-400 truncate">{profile?.email}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400 truncate">
+                {profile?.email || firebaseUser?.email || ''}
+              </p>
             </div>
           </div>
 
@@ -103,7 +115,11 @@ export function ProfileView({ simulationCount }: { simulationCount: number }) {
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#070a0f] border border-sky-500/20">
             <span className="text-slate-500 dark:text-slate-400 block">Member Since</span>
             <span className="font-semibold tabular-nums text-slate-900 dark:text-slate-100 mt-1 block">
-              {profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString() : '—'}
+              {profile?.createdAt
+                ? new Date(profile.createdAt).toLocaleDateString()
+                : firebaseUser?.metadata?.creationTime
+                  ? new Date(firebaseUser.metadata.creationTime).toLocaleDateString()
+                  : new Date().toLocaleDateString()}
             </span>
           </div>
           <div className="p-3.5 rounded-xl bg-slate-50 dark:bg-[#070a0f] border border-sky-500/20">
